@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bill Split Calculator</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #22c55e;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  .subtitle { color: var(--muted); margin-bottom: 24px; }
+
+  .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .panel h2 { margin: 0 0 16px; font-size: 18px; }
+
+  .people-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .person-chip {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+  .person-chip input {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    width: 80px;
+  }
+  .person-chip input:focus { outline: none; }
+  .person-chip .x {
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 16px;
+  }
+  .person-chip .x:hover { color: #ef4444; }
+  .add-person {
+    background: var(--panel-2);
+    border: 1px dashed var(--border);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .add-person:hover { border-color: var(--accent); }
+
+  .item-row {
+    display: grid;
+    grid-template-columns: 1.5fr 100px 1fr 28px;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .item-row .header {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  input[type="text"], input[type="number"] {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  input[type="number"] { text-align: right; }
+
+  .assignees {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    min-height: 36px;
+  }
+  .assignee-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 3px 9px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .assignee-toggle.active {
+    background: var(--accent);
+    color: #0f172a;
+    border-color: var(--accent);
+  }
+
+  .btn-remove {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+  }
+  .btn-remove:hover { color: #ef4444; }
+
+  .btn-add {
+    background: var(--panel-2);
+    color: var(--accent);
+    padding: 8px 14px;
+    margin-top: 8px;
+    width: 100%;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .btn-add:hover { border-color: var(--accent); }
+
+  .totals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .totals-grid label { color: var(--muted); font-size: 12px; }
+  .totals-grid .field { display: flex; flex-direction: column; gap: 4px; }
+
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row.grand { font-weight: 700; font-size: 16px; padding-top: 12px; }
+
+  .person-result {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+  }
+  .person-result .name {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .person-result .name .amount { color: var(--green); }
+  .person-result .breakdown {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pct-toggle {
+    display: inline-flex;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-left: 6px;
+  }
+  .pct-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .pct-toggle button.active {
+    background: var(--accent);
+    color: #0f172a;
+  }
+
+  .tax-lookup {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .tax-lookup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .tax-rate-display {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 15px;
+  }
+  .tax-lookup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    width: 100%;
+    cursor: pointer;
+  }
+  select:disabled { opacity: 0.5; cursor: not-allowed; }
+  select:focus { outline: none; border-color: var(--accent); }
+  .tax-breakdown {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .tax-breakdown span b { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Bill Split Calculator</h1>
+  <p class="subtitle">Tax and tip are distributed proportionally across each person's item totals.</p>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>People</h2>
+      <div class="people-bar" id="peopleBar"></div>
+
+      <h2 style="margin-top: 8px;">Items</h2>
+      <div class="item-row">
+        <div class="header">Description</div>
+        <div class="header" style="text-align:right;">Price</div>
+        <div class="header">Shared by</div>
+        <div></div>
+      </div>
+      <div id="itemsList"></div>
+      <button class="btn-add" onclick="addItem()">+ Add Item</button>
+
+      <h2 style="margin-top: 20px;">Tax & Tip</h2>
+
+      <div class="tax-lookup">
+        <div class="tax-lookup-header">
+          <span>Sales Tax Lookup (US)</span>
+          <span class="tax-rate-display" id="taxRateDisplay">—</span>
+        </div>
+        <div class="tax-lookup-grid">
+          <select id="stateSelect"><option value="">State…</option></select>
+          <select id="countySelect" disabled><option value="">County…</option></select>
+          <select id="citySelect" disabled><option value="">City…</option></select>
+        </div>
+        <div class="tax-breakdown" id="taxBreakdown"></div>
+      </div>
+
+      <div class="totals-grid">
+        <div class="field">
+          <label>Tax
+            <span class="pct-toggle" data-mode="tax">
+              <button data-val="amt">$</button>
+              <button class="active" data-val="pct">%</button>
+            </span>
+          </label>
+          <input type="number" id="taxInput" value="0" step="0.01" min="0" />
+        </div>
+        <div class="field">
+          <label>Tip
+            <span class="pct-toggle" data-mode="tip">
+              <button data-val="amt">$</button>
+              <button class="active" data-val="pct">%</button>
+            </span>
+          </label>
+          <input type="number" id="tipInput" value="18" step="0.5" min="0" />
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Summary</h2>
+      <div class="summary-row"><span>Subtotal</span><span id="sumSubtotal">$0.00</span></div>
+      <div class="summary-row"><span>Tax</span><span id="sumTax">$0.00</span></div>
+      <div class="summary-row"><span>Tip</span><span id="sumTip">$0.00</span></div>
+      <div class="summary-row grand"><span>Total</span><span id="sumTotal">$0.00</span></div>
+
+      <h2 style="margin-top: 20px;">Per Person</h2>
+      <div id="perPerson"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Sales tax data — representative rates as of 2025; verify for your exact address.
+  // Structure: state -> { rate, counties: { county -> { rate, cities: { city -> rate } } } }
+  // Combined rate = state + county + city (city rate is the city/municipal portion only).
+  const TAX_DATA = {
+    'California': { rate: 7.25, counties: {
+      'Los Angeles': { rate: 0.25, cities: { 'Los Angeles': 1.0, 'Santa Monica': 1.75, 'Long Beach': 2.25, 'Pasadena': 1.5, 'Other / Unincorporated': 0.75 } },
+      'San Francisco': { rate: 1.375, cities: { 'San Francisco': 0.0 } },
+      'Orange': { rate: 0.5, cities: { 'Anaheim': 0.0, 'Irvine': 0.0, 'Santa Ana': 1.5, 'Other / Unincorporated': 0.0 } },
+      'San Diego': { rate: 0.5, cities: { 'San Diego': 0.0, 'Chula Vista': 1.0, 'Other / Unincorporated': 0.0 } },
+      'Santa Clara': { rate: 1.875, cities: { 'San Jose': 0.25, 'Palo Alto': 0.0, 'Other / Unincorporated': 0.0 } },
+    }},
+    'New York': { rate: 4.0, counties: {
+      'New York (Manhattan)': { rate: 0.0, cities: { 'New York City': 4.5, 'MCTD surcharge incl.': 0.375 } },
+      'Kings (Brooklyn)': { rate: 0.0, cities: { 'New York City': 4.5, 'MCTD surcharge incl.': 0.375 } },
+      'Queens': { rate: 0.0, cities: { 'New York City': 4.5, 'MCTD surcharge incl.': 0.375 } },
+      'Nassau': { rate: 4.25, cities: { 'Other / Unincorporated': 0.375 } },
+      'Westchester': { rate: 4.0, cities: { 'Yonkers': 0.5, 'Other / Unincorporated': 0.375 } },
+      'Erie': { rate: 4.75, cities: { 'Buffalo': 0.0, 'Other / Unincorporated': 0.0 } },
+    }},
+    'Texas': { rate: 6.25, counties: {
+      'Harris': { rate: 0.0, cities: { 'Houston': 2.0, 'Other / Unincorporated': 1.0 } },
+      'Dallas': { rate: 0.0, cities: { 'Dallas': 2.0, 'Other / Unincorporated': 1.0 } },
+      'Travis': { rate: 0.0, cities: { 'Austin': 2.0, 'Other / Unincorporated': 1.0 } },
+      'Bexar': { rate: 0.0, cities: { 'San Antonio': 2.0, 'Other / Unincorporated': 1.25 } },
+    }},
+    'Florida': { rate: 6.0, counties: {
+      'Miami-Dade': { rate: 1.0, cities: { 'Miami': 0.0, 'Miami Beach': 0.0, 'Other / Unincorporated': 0.0 } },
+      'Broward': { rate: 1.0, cities: { 'Fort Lauderdale': 0.0, 'Other / Unincorporated': 0.0 } },
+      'Orange': { rate: 0.5, cities: { 'Orlando': 0.0, 'Other / Unincorporated': 0.0 } },
+      'Hillsborough': { rate: 1.5, cities: { 'Tampa': 0.0, 'Other / Unincorporated': 0.0 } },
+    }},
+    'Washington': { rate: 6.5, counties: {
+      'King': { rate: 0.0, cities: { 'Seattle': 3.85, 'Bellevue': 3.6, 'Redmond': 3.6, 'Other / Unincorporated': 2.7 } },
+      'Pierce': { rate: 0.0, cities: { 'Tacoma': 3.4, 'Other / Unincorporated': 2.5 } },
+      'Snohomish': { rate: 0.0, cities: { 'Everett': 3.3, 'Other / Unincorporated': 2.5 } },
+    }},
+    'Illinois': { rate: 6.25, counties: {
+      'Cook': { rate: 1.75, cities: { 'Chicago': 1.25, 'Evanston': 1.0, 'Other / Unincorporated': 0.75 } },
+      'DuPage': { rate: 0.0, cities: { 'Naperville': 0.5, 'Other / Unincorporated': 0.75 } },
+    }},
+    'Massachusetts': { rate: 6.25, counties: {
+      'Suffolk': { rate: 0.0, cities: { 'Boston': 0.0 } },
+      'Middlesex': { rate: 0.0, cities: { 'Cambridge': 0.0, 'Other / Unincorporated': 0.0 } },
+    }},
+    'Georgia': { rate: 4.0, counties: {
+      'Fulton': { rate: 3.0, cities: { 'Atlanta': 1.5, 'Other / Unincorporated': 0.0 } },
+      'DeKalb': { rate: 4.0, cities: { 'Other / Unincorporated': 0.0 } },
+    }},
+    'Colorado': { rate: 2.9, counties: {
+      'Denver': { rate: 0.0, cities: { 'Denver': 4.81, 'RTD/CD districts incl.': 1.1 } },
+      'Boulder': { rate: 1.185, cities: { 'Boulder': 3.86, 'Other / Unincorporated': 0.985 } },
+    }},
+    'Arizona': { rate: 5.6, counties: {
+      'Maricopa': { rate: 0.7, cities: { 'Phoenix': 2.3, 'Scottsdale': 1.75, 'Tempe': 1.8, 'Other / Unincorporated': 0.0 } },
+      'Pima': { rate: 0.5, cities: { 'Tucson': 2.6, 'Other / Unincorporated': 0.0 } },
+    }},
+    'Oregon': { rate: 0.0, counties: { '— No sales tax —': { rate: 0.0, cities: { '—': 0.0 } } } },
+    'New Hampshire': { rate: 0.0, counties: { '— No sales tax —': { rate: 0.0, cities: { '—': 0.0 } } } },
+    'Montana': { rate: 0.0, counties: { '— No sales tax —': { rate: 0.0, cities: { '—': 0.0 } } } },
+    'Delaware': { rate: 0.0, counties: { '— No sales tax —': { rate: 0.0, cities: { '—': 0.0 } } } },
+  };
+
+  let nextId = 1;
+  const id = () => nextId++;
+
+  const state = {
+    people: [
+      { id: id(), name: 'Alice' },
+      { id: id(), name: 'Bob' },
+    ],
+    items: [],
+    taxMode: 'amt',
+    tipMode: 'pct',
+  };
+
+  state.items.push({ id: id(), desc: '', price: 0, assignees: state.people.map(p => p.id) });
+
+  function fmt(n) {
+    return (n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function addPerson() {
+    const p = { id: id(), name: 'Person ' + (state.people.length + 1) };
+    state.people.push(p);
+    state.items.forEach(it => {
+      if (it.assignees.length === 0) it.assignees.push(p.id);
+    });
+    render();
+  }
+
+  function removePerson(pid) {
+    state.people = state.people.filter(p => p.id !== pid);
+    state.items.forEach(it => { it.assignees = it.assignees.filter(a => a !== pid); });
+    render();
+  }
+
+  function addItem() {
+    state.items.push({ id: id(), desc: '', price: 0, assignees: state.people.map(p => p.id) });
+    render();
+  }
+
+  function removeItem(iid) {
+    state.items = state.items.filter(it => it.id !== iid);
+    render();
+  }
+
+  function toggleAssignee(iid, pid) {
+    const item = state.items.find(it => it.id === iid);
+    if (!item) return;
+    if (item.assignees.includes(pid)) {
+      item.assignees = item.assignees.filter(a => a !== pid);
+    } else {
+      item.assignees.push(pid);
+    }
+    calculate();
+  }
+
+  function calculate() {
+    const subtotal = state.items.reduce((s, it) => s + (parseFloat(it.price) || 0), 0);
+
+    const taxInput = parseFloat(document.getElementById('taxInput').value) || 0;
+    const tipInput = parseFloat(document.getElementById('tipInput').value) || 0;
+    const tax = state.taxMode === 'pct' ? subtotal * taxInput / 100 : taxInput;
+    const tip = state.tipMode === 'pct' ? subtotal * tipInput / 100 : tipInput;
+    const total = subtotal + tax + tip;
+
+    document.getElementById('sumSubtotal').textContent = fmt(subtotal);
+    document.getElementById('sumTax').textContent = fmt(tax);
+    document.getElementById('sumTip').textContent = fmt(tip);
+    document.getElementById('sumTotal').textContent = fmt(total);
+
+    const perPerson = {};
+    state.people.forEach(p => { perPerson[p.id] = { subtotal: 0, tax: 0, tip: 0 }; });
+
+    state.items.forEach(it => {
+      const price = parseFloat(it.price) || 0;
+      if (it.assignees.length === 0 || price === 0) return;
+      const share = price / it.assignees.length;
+      it.assignees.forEach(pid => {
+        if (perPerson[pid]) perPerson[pid].subtotal += share;
+      });
+    });
+
+    state.people.forEach(p => {
+      const ratio = subtotal > 0 ? perPerson[p.id].subtotal / subtotal : 0;
+      perPerson[p.id].tax = tax * ratio;
+      perPerson[p.id].tip = tip * ratio;
+      perPerson[p.id].total = perPerson[p.id].subtotal + perPerson[p.id].tax + perPerson[p.id].tip;
+    });
+
+    const container = document.getElementById('perPerson');
+    container.innerHTML = '';
+    state.people.forEach(p => {
+      const r = perPerson[p.id];
+      const div = document.createElement('div');
+      div.className = 'person-result';
+      div.innerHTML = `
+        <div class="name"><span>${escapeHtml(p.name) || 'Unnamed'}</span><span class="amount">${fmt(r.total)}</span></div>
+        <div class="breakdown">
+          <span>Items: ${fmt(r.subtotal)}</span>
+          <span>Tax: ${fmt(r.tax)}</span>
+          <span>Tip: ${fmt(r.tip)}</span>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function render() {
+    const peopleBar = document.getElementById('peopleBar');
+    peopleBar.innerHTML = '';
+    state.people.forEach(p => {
+      const chip = document.createElement('div');
+      chip.className = 'person-chip';
+      chip.innerHTML = `<input type="text" value="${escapeHtml(p.name)}" /><span class="x" title="Remove">&times;</span>`;
+      const [input, x] = chip.children;
+      input.addEventListener('input', e => { p.name = e.target.value; calculate(); });
+      x.addEventListener('click', () => removePerson(p.id));
+      peopleBar.appendChild(chip);
+    });
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-person';
+    addBtn.textContent = '+ Add Person';
+    addBtn.onclick = addPerson;
+    peopleBar.appendChild(addBtn);
+
+    const itemsList = document.getElementById('itemsList');
+    itemsList.innerHTML = '';
+    state.items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      const assigneesHtml = state.people.map(p => {
+        const active = it.assignees.includes(p.id) ? 'active' : '';
+        return `<button class="assignee-toggle ${active}" data-pid="${p.id}">${escapeHtml(p.name) || '?'}</button>`;
+      }).join('');
+      row.innerHTML = `
+        <input type="text" placeholder="Item" value="${escapeHtml(it.desc)}" />
+        <input type="number" placeholder="0.00" value="${it.price || ''}" step="0.01" min="0" />
+        <div class="assignees">${assigneesHtml || '<span style="color:var(--muted);font-size:12px;padding:4px;">No people</span>'}</div>
+        <button class="btn-remove" title="Remove">&times;</button>
+      `;
+      const [descInput, priceInput, assignees, rmBtn] = row.children;
+      descInput.addEventListener('input', e => { it.desc = e.target.value; });
+      priceInput.addEventListener('input', e => { it.price = parseFloat(e.target.value) || 0; calculate(); });
+      assignees.querySelectorAll('.assignee-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const pid = parseInt(btn.dataset.pid);
+          toggleAssignee(it.id, pid);
+          btn.classList.toggle('active');
+        });
+      });
+      rmBtn.addEventListener('click', () => removeItem(it.id));
+      itemsList.appendChild(row);
+    });
+
+    calculate();
+  }
+
+  document.getElementById('taxInput').addEventListener('input', calculate);
+
+  // Tax lookup dropdowns
+  const stateSel = document.getElementById('stateSelect');
+  const countySel = document.getElementById('countySelect');
+  const citySel = document.getElementById('citySelect');
+  const taxRateDisplay = document.getElementById('taxRateDisplay');
+  const taxBreakdown = document.getElementById('taxBreakdown');
+
+  Object.keys(TAX_DATA).sort().forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s; opt.textContent = s;
+    stateSel.appendChild(opt);
+  });
+
+  function setTaxModeToPct() {
+    state.taxMode = 'pct';
+    document.querySelectorAll('.pct-toggle[data-mode="tax"] button').forEach(b => {
+      b.classList.toggle('active', b.dataset.val === 'pct');
+    });
+  }
+
+  function applyLookup() {
+    const s = stateSel.value;
+    const c = countySel.value;
+    const city = citySel.value;
+    if (!s) {
+      taxRateDisplay.textContent = '—';
+      taxBreakdown.innerHTML = '';
+      return;
+    }
+    const stateRate = TAX_DATA[s].rate;
+    const countyRate = c ? TAX_DATA[s].counties[c].rate : 0;
+    const cityRate = (c && city) ? TAX_DATA[s].counties[c].cities[city] : 0;
+    const total = stateRate + countyRate + cityRate;
+    taxRateDisplay.textContent = total.toFixed(3).replace(/\.?0+$/, '') + '%';
+
+    const parts = [`<span>State: <b>${stateRate}%</b></span>`];
+    if (c) parts.push(`<span>County: <b>${countyRate}%</b></span>`);
+    if (city) parts.push(`<span>City: <b>${cityRate}%</b></span>`);
+    taxBreakdown.innerHTML = parts.join('');
+
+    if (c && city) {
+      setTaxModeToPct();
+      document.getElementById('taxInput').value = total.toFixed(3).replace(/\.?0+$/, '');
+      calculate();
+    }
+  }
+
+  stateSel.addEventListener('change', () => {
+    countySel.innerHTML = '<option value="">County…</option>';
+    citySel.innerHTML = '<option value="">City…</option>';
+    citySel.disabled = true;
+    if (stateSel.value) {
+      const counties = Object.keys(TAX_DATA[stateSel.value].counties).sort();
+      counties.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        countySel.appendChild(opt);
+      });
+      countySel.disabled = false;
+    } else {
+      countySel.disabled = true;
+    }
+    applyLookup();
+  });
+
+  countySel.addEventListener('change', () => {
+    citySel.innerHTML = '<option value="">City…</option>';
+    if (countySel.value) {
+      const cities = Object.keys(TAX_DATA[stateSel.value].counties[countySel.value].cities).sort();
+      cities.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        citySel.appendChild(opt);
+      });
+      citySel.disabled = false;
+    } else {
+      citySel.disabled = true;
+    }
+    applyLookup();
+  });
+
+  citySel.addEventListener('change', applyLookup);
+  document.getElementById('tipInput').addEventListener('input', calculate);
+
+  document.querySelectorAll('.pct-toggle').forEach(toggle => {
+    const mode = toggle.dataset.mode;
+    toggle.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        toggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state[mode + 'Mode'] = btn.dataset.val;
+        calculate();
+      });
+    });
+  });
+
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Net Worth Calculator</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --accent: #38bdf8;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { margin: 0 0 4px; font-size: 28px; }
+  .subtitle { color: var(--muted); margin-bottom: 24px; }
+  .summary {
+    background: linear-gradient(135deg, #1e293b, #312e81);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .summary-card { text-align: center; }
+  .summary-label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+  .green { color: var(--green); }
+  .red { color: var(--red); }
+  .accent { color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+    .summary { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .panel h2 { margin: 0 0 16px; font-size: 18px; display: flex; justify-content: space-between; align-items: baseline; }
+  .panel h2 .total { font-size: 16px; font-weight: 600; }
+
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 140px 32px;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  input {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+  input[type="number"] { text-align: right; }
+
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+  .btn-remove {
+    background: transparent;
+    color: var(--muted);
+    font-size: 18px;
+    padding: 0;
+  }
+  .btn-remove:hover { color: var(--red); }
+  .btn-add {
+    background: var(--panel-2);
+    color: var(--accent);
+    padding: 8px 14px;
+    margin-top: 8px;
+    width: 100%;
+    border: 1px dashed var(--border);
+  }
+  .btn-add:hover { border-color: var(--accent); }
+
+  .actions { margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end; }
+  .btn-action { padding: 10px 18px; }
+  .btn-reset { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-save { background: var(--accent); color: #0f172a; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Net Worth Calculator</h1>
+  <p class="subtitle">Enter your assets and liabilities to see your net worth. Data is saved locally in your browser.</p>
+
+  <div class="summary">
+    <div class="summary-card">
+      <div class="summary-label">Total Assets</div>
+      <div class="summary-value green" id="totalAssets">$0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Total Liabilities</div>
+      <div class="summary-value red" id="totalLiabilities">$0</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Net Worth</div>
+      <div class="summary-value accent" id="netWorth">$0</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>Assets <span class="total green" id="assetsTotal">$0</span></h2>
+      <div id="assetsList"></div>
+      <button class="btn-add" onclick="addRow('assets')">+ Add Asset</button>
+    </div>
+
+    <div class="panel">
+      <h2>Liabilities <span class="total red" id="liabilitiesTotal">$0</span></h2>
+      <div id="liabilitiesList"></div>
+      <button class="btn-add" onclick="addRow('liabilities')">+ Add Liability</button>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-action btn-reset" onclick="resetAll()">Reset</button>
+    <button class="btn-action btn-save" onclick="saveData()">Save</button>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'networth_data_v1';
+
+  const defaults = {
+    assets: [
+      { name: 'Cash & Checking', value: 0 },
+      { name: 'Savings', value: 0 },
+      { name: 'Investments', value: 0 },
+      { name: 'Property', value: 0 },
+    ],
+    liabilities: [
+      { name: 'Credit Cards', value: 0 },
+      { name: 'Mortgage', value: 0 },
+      { name: 'Loans', value: 0 },
+    ],
+  };
+
+  let data = loadData();
+
+  function loadData() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return JSON.parse(JSON.stringify(defaults));
+  }
+
+  function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    flashSaved();
+  }
+
+  function flashSaved() {
+    const btn = document.querySelector('.btn-save');
+    const original = btn.textContent;
+    btn.textContent = 'Saved!';
+    setTimeout(() => (btn.textContent = original), 1200);
+  }
+
+  function resetAll() {
+    if (!confirm('Reset all entries to zero?')) return;
+    data = JSON.parse(JSON.stringify(defaults));
+    localStorage.removeItem(STORAGE_KEY);
+    render();
+  }
+
+  function addRow(type) {
+    data[type].push({ name: '', value: 0 });
+    render();
+    const list = document.getElementById(type + 'List');
+    const inputs = list.querySelectorAll('input[type="text"]');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }
+
+  function removeRow(type, idx) {
+    data[type].splice(idx, 1);
+    render();
+  }
+
+  function updateRow(type, idx, field, value) {
+    data[type][idx][field] = field === 'value' ? (parseFloat(value) || 0) : value;
+    updateTotals();
+  }
+
+  function fmt(n) {
+    return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  }
+
+  function sum(items) {
+    return items.reduce((a, b) => a + (parseFloat(b.value) || 0), 0);
+  }
+
+  function updateTotals() {
+    const assets = sum(data.assets);
+    const liab = sum(data.liabilities);
+    const net = assets - liab;
+    document.getElementById('assetsTotal').textContent = fmt(assets);
+    document.getElementById('liabilitiesTotal').textContent = fmt(liab);
+    document.getElementById('totalAssets').textContent = fmt(assets);
+    document.getElementById('totalLiabilities').textContent = fmt(liab);
+    const netEl = document.getElementById('netWorth');
+    netEl.textContent = fmt(net);
+    netEl.className = 'summary-value ' + (net >= 0 ? 'accent' : 'red');
+  }
+
+  function render() {
+    ['assets', 'liabilities'].forEach(type => {
+      const list = document.getElementById(type + 'List');
+      list.innerHTML = '';
+      data[type].forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `
+          <input type="text" placeholder="Description" value="${escapeHtml(item.name)}" />
+          <input type="number" placeholder="0" value="${item.value || ''}" min="0" step="100" />
+          <button class="btn-remove" title="Remove">&times;</button>
+        `;
+        const [nameInput, valueInput, removeBtn] = row.children;
+        nameInput.addEventListener('input', e => updateRow(type, idx, 'name', e.target.value));
+        valueInput.addEventListener('input', e => updateRow(type, idx, 'value', e.target.value));
+        removeBtn.addEventListener('click', () => removeRow(type, idx));
+        list.appendChild(row);
+      });
+    });
+    updateTotals();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  render();
+</script>
+</body>
+</html>

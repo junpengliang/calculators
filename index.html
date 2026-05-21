@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculators</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --green: #22c55e;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .container {
+    max-width: 880px;
+    width: 100%;
+    text-align: center;
+  }
+  h1 {
+    font-size: 40px;
+    margin: 0 0 8px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .subtitle {
+    color: var(--muted);
+    margin-bottom: 40px;
+    font-size: 16px;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 24px;
+    text-decoration: none;
+    color: var(--text);
+    text-align: left;
+    transition: transform 0.15s, border-color 0.15s;
+    display: block;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--accent);
+  }
+  .card .icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+  .card h2 { margin: 0 0 6px; font-size: 20px; }
+  .card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .card .arrow {
+    color: var(--accent);
+    margin-top: 14px;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  footer {
+    margin-top: 48px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Calculators</h1>
+  <p class="subtitle">Quick personal-finance tools. All math happens in your browser — nothing is sent anywhere.</p>
+
+  <div class="cards">
+    <a class="card" href="networth.html">
+      <div class="icon">$</div>
+      <h2>Net Worth</h2>
+      <p>Track assets and liabilities to see your total net worth. Saves entries to your browser.</p>
+      <span class="arrow">Open &rarr;</span>
+    </a>
+
+    <a class="card" href="billsplit.html">
+      <div class="icon">%</div>
+      <h2>Bill Split</h2>
+      <p>Split a meal bill across people with proportional tax and tip. Includes US sales-tax lookup.</p>
+      <span class="arrow">Open &rarr;</span>
+    </a>
+  </div>
+
+  <footer>Built with plain HTML + JS. Hosted on GitHub Pages.</footer>
+</div>
+</body>
+</html>
