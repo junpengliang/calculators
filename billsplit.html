@@ -737,10 +737,13 @@
     previewImg.classList.add('show');
     progressWrap.classList.add('show');
     progressBar.style.width = '0%';
-    statusEl.textContent = 'Loading OCR engine…';
+    statusEl.textContent = 'Preprocessing image…';
 
     try {
-      const { data } = await Tesseract.recognize(url, 'eng', {
+      const processedCanvas = await preprocessImage(url);
+      statusEl.textContent = 'Loading OCR engine…';
+
+      const worker = await Tesseract.createWorker('eng', 1, {
         logger: m => {
           if (m.status === 'recognizing text') {
             progressBar.style.width = Math.round(m.progress * 100) + '%';
@@ -750,6 +753,15 @@
           }
         }
       });
+      // Tune for receipts: assume a single column of text, allow only chars that appear on receipts.
+      await worker.setParameters({
+        tessedit_pageseg_mode: Tesseract.PSM ? Tesseract.PSM.SINGLE_BLOCK : '6',
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,$%@#&()/-:* ',
+        preserve_interword_spaces: '1',
+      });
+      const { data } = await worker.recognize(processedCanvas);
+      await worker.terminate();
+
       progressBar.style.width = '100%';
       const parsed = parseReceipt(data.text);
       applyParsedReceipt(parsed);
@@ -765,6 +777,85 @@
     }
   }
 
+  // Preprocess: upscale small images, convert to grayscale, boost contrast,
+  // apply adaptive (local-mean) threshold to a clean black-on-white image.
+  // This is the single biggest accuracy lever for Tesseract on phone photos.
+  function preprocessImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        // Target ~1600px on the longest edge — Tesseract prefers ~300 DPI density.
+        const TARGET = 1600;
+        const scale = Math.min(2.5, Math.max(1, TARGET / Math.max(img.naturalWidth, img.naturalHeight)));
+        const w = Math.round(img.naturalWidth * scale);
+        const h = Math.round(img.naturalHeight * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const px = imgData.data;
+
+        // 1) Grayscale (luminance) into a flat array.
+        const gray = new Uint8ClampedArray(w * h);
+        for (let i = 0, j = 0; i < px.length; i += 4, j++) {
+          gray[j] = (px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114) | 0;
+        }
+
+        // 2) Adaptive threshold using a fast box-blur mean.
+        const radius = Math.max(8, Math.round(Math.min(w, h) / 60));
+        const mean = boxBlur(gray, w, h, radius);
+        const C = 10; // bias — pixel must be C darker than local mean to count as ink
+        for (let j = 0, i = 0; j < gray.length; j++, i += 4) {
+          const v = gray[j] < (mean[j] - C) ? 0 : 255;
+          px[i] = px[i + 1] = px[i + 2] = v;
+          px[i + 3] = 255;
+        }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas);
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  // Two-pass separable box blur — O(n) per pixel regardless of radius.
+  function boxBlur(src, w, h, r) {
+    const tmp = new Uint8ClampedArray(src.length);
+    const out = new Uint8ClampedArray(src.length);
+    // Horizontal
+    for (let y = 0; y < h; y++) {
+      let sum = 0;
+      const row = y * w;
+      for (let x = -r; x <= r; x++) sum += src[row + Math.min(w - 1, Math.max(0, x))];
+      const denom = 2 * r + 1;
+      for (let x = 0; x < w; x++) {
+        tmp[row + x] = (sum / denom) | 0;
+        const xAdd = Math.min(w - 1, x + r + 1);
+        const xSub = Math.max(0, x - r);
+        sum += src[row + xAdd] - src[row + xSub];
+      }
+    }
+    // Vertical
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      for (let y = -r; y <= r; y++) sum += tmp[Math.min(h - 1, Math.max(0, y)) * w + x];
+      const denom = 2 * r + 1;
+      for (let y = 0; y < h; y++) {
+        out[y * w + x] = (sum / denom) | 0;
+        const yAdd = Math.min(h - 1, y + r + 1);
+        const ySub = Math.max(0, y - r);
+        sum += tmp[yAdd * w + x] - tmp[ySub * w + x];
+      }
+    }
+    return out;
+  }
+
   // Parse OCR text into items + tax + tip.
   // Heuristics:
   //  - Lines ending with a price are candidate line items.
@@ -774,38 +865,73 @@
   //  - Lines containing "total" stop item collection.
   function parseReceipt(text) {
     const result = { items: [], tax: null, tip: null, subtotal: null, total: null };
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const priceRegex = /\$?\s*(-?\d+(?:[.,]\d{2}))\s*$/;
-    const moneyOnly = /^\$?\s*-?\d+(?:[.,]\d{2})\s*$/;
+    // Fix common OCR confusions in numeric contexts: O→0, l/I→1, S→5 only when surrounded by digits/decimal.
+    const fixed = text
+      .replace(/(\d)[oO](\d)/g, '$10$2')
+      .replace(/(\d)[lI](\d)/g, '$11$2')
+      .replace(/(\d),(\d{2})\b/g, '$1.$2'); // EU-style comma decimal → dot
+    const rawLines = fixed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+    const priceRegex = /\$?\s*(-?\d{1,4}(?:\.\d{2}))\s*$/;
+    const priceOnlyRegex = /^\$?\s*(-?\d{1,4}\.\d{2})\s*$/;
+
+    // Fold lines: if a line has no price but the *next* line is just a price, merge them.
+    const lines = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      const cur = rawLines[i];
+      const next = rawLines[i + 1];
+      if (next && priceOnlyRegex.test(next) && !priceRegex.test(cur) && cur.length > 1) {
+        lines.push(cur + ' ' + next);
+        i++;
+      } else {
+        lines.push(cur);
+      }
+    }
+
+    const totalKeywordRegex = /\b(sub[\s-]?total|tax|gst|hst|vat|tip|gratuity|service\s*charge|grand\s*total|total\s*due|amount\s*due|balance\s*due|total|change|cash|visa|mastercard|amex|debit|credit|payment|tendered)\b/;
 
     let stopItems = false;
     for (const line of lines) {
       const lower = line.toLowerCase();
       const m = line.match(priceRegex);
-      if (!m) continue;
-      const price = parseFloat(m[1].replace(',', '.'));
+      if (!m) {
+        // Hitting a totals keyword without price still flips the stop flag.
+        if (totalKeywordRegex.test(lower)) stopItems = true;
+        continue;
+      }
+      const price = parseFloat(m[1]);
       if (isNaN(price)) continue;
 
-      // Identify totals section labels
       if (/\b(sub[\s-]?total)\b/.test(lower)) { result.subtotal = price; stopItems = true; continue; }
       if (/\btax\b|\bgst\b|\bhst\b|\bvat\b/.test(lower)) { result.tax = price; stopItems = true; continue; }
       if (/\btip\b|\bgratuity\b|\bservice\s*charge\b/.test(lower)) { result.tip = price; stopItems = true; continue; }
       if (/\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|total)\b/.test(lower)) { result.total = price; stopItems = true; continue; }
-      if (/\b(change|cash|visa|mastercard|amex|debit|credit|payment)\b/.test(lower)) { stopItems = true; continue; }
+      if (/\b(change|cash|visa|mastercard|amex|debit|credit|payment|tendered)\b/.test(lower)) { stopItems = true; continue; }
 
       if (stopItems) continue;
-      if (moneyOnly.test(line)) continue; // bare numbers — skip
+      if (priceOnlyRegex.test(line)) continue;
 
-      // Description = line minus the trailing price.
       let desc = line.slice(0, line.length - m[0].length).trim();
-      // Strip leading qty markers like "1x ", "2 @ ", "(2)"
       desc = desc.replace(/^\(?\d+\)?\s*[xX@]\s*/, '').replace(/^\d+\s+/, '');
       desc = desc.replace(/[\s\-_.]+$/, '').trim();
+      // Drop pure noise: too short, all digits/punctuation, or no letters at all.
       if (!desc || desc.length < 2) continue;
-      if (price <= 0) continue;
-      if (price > 1000) continue; // sanity guard against "0123456789" misreads
+      if (!/[A-Za-z]{2,}/.test(desc)) continue;
+      if (price <= 0 || price > 1000) continue;
 
       result.items.push({ desc, price });
+    }
+
+    // If we picked up a subtotal, drop any "items" whose sum exceeds it by >25% — those are likely garbage.
+    if (result.subtotal && result.items.length > 0) {
+      const sumItems = result.items.reduce((s, it) => s + it.price, 0);
+      if (sumItems > result.subtotal * 1.25) {
+        // Try removing the largest outlier until we're within tolerance.
+        result.items.sort((a, b) => b.price - a.price);
+        while (result.items.length > 1 && result.items.reduce((s, it) => s + it.price, 0) > result.subtotal * 1.25) {
+          result.items.shift();
+        }
+      }
     }
     return result;
   }
