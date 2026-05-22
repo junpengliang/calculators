@@ -481,6 +481,97 @@
   }
   @media (max-width: 860px) { .sticky-bar { display: flex; } }
 
+  /* Help / tooltips */
+  .help-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .help-panel summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 14px;
+    list-style: none;
+    user-select: none;
+  }
+  .help-panel summary::-webkit-details-marker { display: none; }
+  .help-panel summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.15s;
+  }
+  .help-panel[open] summary::before { transform: rotate(90deg); }
+  .help-content {
+    padding: 0 16px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .help-content ol { margin: 6px 0 0; padding-left: 22px; }
+  .help-content li { margin-bottom: 4px; }
+  .help-content b { color: var(--text); font-weight: 600; }
+
+  .help-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 6px;
+    cursor: help;
+    position: relative;
+    background: transparent;
+    flex-shrink: 0;
+  }
+  .help-icon:hover { color: var(--accent); border-color: var(--accent); }
+  .help-icon::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    width: 240px;
+    text-align: left;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 50;
+    white-space: normal;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .help-icon:hover::after, .help-icon:focus::after { opacity: 1; }
+  @media (max-width: 600px) {
+    .help-icon::after { width: 200px; left: auto; right: 0; transform: none; }
+  }
+
+  .empty-state {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 16px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
   /* Toast */
   .toast {
     position: fixed;
@@ -505,9 +596,22 @@
   <h1>Bill Split Calculator</h1>
   <p class="subtitle">Tax and tip are distributed proportionally across each person's item totals.</p>
 
+  <details class="help-panel">
+    <summary>How it works</summary>
+    <div class="help-content">
+      <ol>
+        <li><b>Add people</b> — type names in the chips at the top. Save recurring groups for next time.</li>
+        <li><b>Add items</b> — type each line item with its price, or <b>upload a receipt photo</b> to auto-fill items. Tap names below each item to mark who shared it.</li>
+        <li><b>Set tax & tip</b> — enter dollar amounts or % rates. Use the <b>Sales Tax Lookup</b> to auto-fill the rate by State / County / City.</li>
+        <li><b>Review totals</b> — each person's share of tax and tip is scaled by what they actually ordered. Add Venmo / Zelle / PayPal handles to one-tap charge them.</li>
+        <li><b>Share</b> — copy the breakdown or use your phone's share sheet to send the split to the group.</li>
+      </ol>
+    </div>
+  </details>
+
   <div class="grid">
     <div class="panel">
-      <h2>People</h2>
+      <h2>People<span class="help-icon" tabindex="0" data-tip="Add everyone splitting the bill. Names auto-suggest who pays what — empty names just appear as 'Unnamed'. Save the list as a Group to reuse next time.">?</span></h2>
       <div class="group-bar">
         <select id="groupSelect"><option value="">Saved groups…</option></select>
         <button id="saveGroupBtn" type="button">Save group</button>
@@ -515,16 +619,17 @@
       </div>
       <div class="people-bar" id="peopleBar"></div>
 
-      <h2 style="margin-top: 8px;">Items</h2>
+      <h2 style="margin-top: 8px;">Items<span class="help-icon" tabindex="0" data-tip="One row per dish or drink. Tap names under each item to toggle who shared it. Use All / None / Default presets to assign quickly.">?</span></h2>
 
       <div class="default-split">
         <span class="label">Default split for new items:</span>
         <span id="defaultSplitChips"></span>
+        <span class="help-icon" tabindex="0" data-tip="When you add a new item (or upload a receipt), it auto-assigns to whoever is highlighted here. Useful when only some of the group is sharing most items.">?</span>
       </div>
 
       <div class="receipt-upload" id="receiptDrop">
         <label for="receiptFile">📷 Upload a receipt image</label>
-        <div class="hint">Drag & drop or click to scan items automatically (JPG/PNG, runs in your browser)</div>
+        <div class="hint">Drag & drop, paste, or tap to scan items automatically.<br/>Best results: flat, well-lit, glare-free photo. All processing happens on your device.</div>
         <input type="file" id="receiptFile" accept="image/*" />
         <img class="receipt-preview" id="receiptPreview" alt="receipt preview" />
         <div class="receipt-progress" id="receiptProgress"><div class="receipt-progress-bar" id="receiptProgressBar"></div></div>
@@ -534,11 +639,11 @@
       <div id="itemsList"></div>
       <button class="btn-add" onclick="addItem()">+ Add Item</button>
 
-      <h2 style="margin-top: 20px;">Tax & Tip</h2>
+      <h2 style="margin-top: 20px;">Tax & Tip<span class="help-icon" tabindex="0" data-tip="Enter $ amounts straight from your receipt, or % to compute. Tax and tip are split proportionally — if Alice ordered 60% of the food, she pays 60% of the tax and tip.">?</span></h2>
 
       <div class="tax-lookup">
         <div class="tax-lookup-header">
-          <span>Sales Tax Lookup (US)</span>
+          <span>Sales Tax Lookup (US)<span class="help-icon" tabindex="0" data-tip="Pick State → County → City to auto-fill the combined sales tax %. Rates are a 2025 snapshot — verify on the receipt for accuracy. The number stays editable.">?</span></span>
           <span class="tax-rate-display" id="taxRateDisplay">—</span>
         </div>
         <div class="tax-lookup-grid">
@@ -578,10 +683,10 @@
       <div class="summary-row"><span>Tip</span><span id="sumTip">$0.00</span></div>
       <div class="summary-row grand"><span>Total</span><span id="sumTotal">$0.00</span></div>
 
-      <h2 style="margin-top: 20px;">Per Person</h2>
+      <h2 style="margin-top: 20px;">Per Person<span class="help-icon" tabindex="0" data-tip="Each person's total = (their items) + their share of tax + their share of tip. Tax/tip share is proportional to what they ordered.">?</span></h2>
 
       <details class="handles-editor">
-        <summary>Payment handles (Venmo / Zelle / PayPal)</summary>
+        <summary>Payment handles (Venmo / Zelle / PayPal) <span class="help-icon" tabindex="0" data-tip="Optional. Add handles to generate one-tap charge links per person. Venmo/PayPal links open prefilled with the amount; Zelle copies the handle to clipboard (Zelle has no payment URL scheme).">?</span></summary>
         <div class="handles-grid" id="handlesGrid"></div>
       </details>
 
@@ -915,6 +1020,9 @@
 
     const itemsList = document.getElementById('itemsList');
     itemsList.innerHTML = '';
+    if (state.items.length === 0) {
+      itemsList.innerHTML = '<div class="empty-state">No items yet. Add one below or upload a receipt above.</div>';
+    }
     state.items.forEach(it => {
       const card = document.createElement('div');
       card.className = 'item-card';

@@ -108,12 +108,59 @@
   .btn-action { padding: 10px 18px; }
   .btn-reset { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
   .btn-save { background: var(--accent); color: #0f172a; }
+
+  .help-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .help-panel summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 14px;
+    list-style: none;
+    user-select: none;
+  }
+  .help-panel summary::-webkit-details-marker { display: none; }
+  .help-panel summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.15s;
+  }
+  .help-panel[open] summary::before { transform: rotate(90deg); }
+  .help-content {
+    padding: 0 16px 16px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .help-content b { color: var(--text); font-weight: 600; }
+  .help-content ul { margin: 6px 0 0; padding-left: 22px; }
+  .help-content li { margin-bottom: 4px; }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>Net Worth Calculator</h1>
   <p class="subtitle">Enter your assets and liabilities to see your net worth. Data is saved locally in your browser.</p>
+
+  <details class="help-panel">
+    <summary>How it works</summary>
+    <div class="help-content">
+      <b>Net Worth = Total Assets − Total Liabilities.</b>
+      <ul>
+        <li><b>Assets</b>: things you own with positive value — cash, savings, investments, retirement accounts, real estate equity, vehicles.</li>
+        <li><b>Liabilities</b>: money you owe — credit-card balances, mortgage, student/auto loans, lines of credit.</li>
+        <li>Click <b>+ Add Asset / Add Liability</b> to add custom rows. Use <b>Save</b> to persist entries to this browser; <b>Reset</b> clears them.</li>
+        <li>All data stays on your device — nothing is sent anywhere.</li>
+      </ul>
+    </div>
+  </details>
 
   <div class="summary">
     <div class="summary-card">
