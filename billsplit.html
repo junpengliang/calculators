@@ -23,13 +23,18 @@
     color: var(--text);
     min-height: 100vh;
     padding: 24px;
+    padding-bottom: 96px; /* room for sticky bar on mobile */
   }
   .container { max-width: 1100px; margin: 0 auto; }
   h1 { margin: 0 0 4px; font-size: 28px; }
   .subtitle { color: var(--muted); margin-bottom: 24px; }
 
   .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; }
-  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) {
+    body { padding: 16px; padding-bottom: 96px; }
+    .grid { grid-template-columns: 1fr; gap: 16px; }
+    h1 { font-size: 24px; }
+  }
 
   .panel {
     background: var(--panel);
@@ -80,54 +85,74 @@
   }
   .add-person:hover { border-color: var(--accent); }
 
-  .item-row {
+  .item-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .item-top {
     display: grid;
-    grid-template-columns: 1.5fr 100px 1fr 28px;
+    grid-template-columns: 1fr 110px 36px;
     gap: 8px;
-    margin-bottom: 8px;
     align-items: center;
+    margin-bottom: 10px;
   }
-  .item-row .header {
-    font-size: 12px;
+  .item-card .item-presets {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .preset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
     color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
   }
+  .preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .preset-btn.danger:hover { border-color: #ef4444; color: #ef4444; }
   input[type="text"], input[type="number"] {
     background: var(--panel-2);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 8px 10px;
+    padding: 10px 12px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 16px; /* 16px prevents iOS zoom on focus */
     width: 100%;
   }
   input:focus { outline: none; border-color: var(--accent); }
   input[type="number"] { text-align: right; }
+  @media (min-width: 861px) {
+    input[type="text"], input[type="number"] { font-size: 14px; padding: 8px 10px; }
+  }
 
   .assignees {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px;
+    gap: 6px;
     min-height: 36px;
   }
   .assignee-toggle {
-    background: transparent;
+    background: var(--panel);
     border: 1px solid var(--border);
     color: var(--muted);
     border-radius: 999px;
-    padding: 3px 9px;
-    font-size: 12px;
+    padding: 8px 14px;
+    font-size: 13px;
     cursor: pointer;
+    min-height: 36px;
+    touch-action: manipulation;
   }
   .assignee-toggle.active {
     background: var(--accent);
     color: #0f172a;
     border-color: var(--accent);
+    font-weight: 600;
   }
 
   .btn-remove {
@@ -308,6 +333,171 @@
     display: none;
   }
   .receipt-preview.show { display: inline-block; }
+
+  /* Default split + group bar */
+  .default-split {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .default-split .label { color: var(--muted); }
+  .group-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .group-bar select, .group-bar input {
+    width: auto;
+    flex: 1 1 140px;
+  }
+  .group-bar button {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .group-bar button:hover { border-color: var(--accent); color: var(--accent); }
+  .person-chip { padding: 8px 14px; min-height: 36px; }
+  .person-chip input { font-size: 14px; min-width: 70px; }
+  .person-chip .x { font-size: 18px; padding: 0 4px; }
+  .add-person { padding: 8px 14px; min-height: 36px; }
+
+  /* Per-person summary card share buttons */
+  .person-result .actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .person-result .actions a, .person-result .actions button {
+    background: var(--panel);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .person-result .actions a:hover, .person-result .actions button:hover { border-color: var(--accent); }
+
+  /* Share toolbar above per-person */
+  .share-toolbar {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+    flex-wrap: wrap;
+  }
+  .share-toolbar button {
+    flex: 1 1 auto;
+    background: var(--accent);
+    color: #0f172a;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 40px;
+  }
+  .share-toolbar button:hover { opacity: 0.9; }
+  .share-toolbar button.secondary {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-weight: 500;
+  }
+
+  /* Per-person payment handles editor */
+  .handles-editor {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  .handles-editor summary {
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    user-select: none;
+  }
+  .handles-grid {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+  }
+  .handles-grid label {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .handles-grid input { padding: 6px 8px; font-size: 13px; }
+
+  /* Sticky bottom bar (mobile) */
+  .sticky-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 12px 20px;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+  }
+  .sticky-bar .label { color: var(--muted); font-size: 12px; }
+  .sticky-bar .total { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .sticky-bar button {
+    background: var(--accent);
+    color: #0f172a;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  @media (max-width: 860px) { .sticky-bar { display: flex; } }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--green);
+    color: #0f172a;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    z-index: 200;
+    transition: transform 0.25s;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
@@ -318,9 +508,19 @@
   <div class="grid">
     <div class="panel">
       <h2>People</h2>
+      <div class="group-bar">
+        <select id="groupSelect"><option value="">Saved groups…</option></select>
+        <button id="saveGroupBtn" type="button">Save group</button>
+        <button id="deleteGroupBtn" type="button" title="Delete current">×</button>
+      </div>
       <div class="people-bar" id="peopleBar"></div>
 
       <h2 style="margin-top: 8px;">Items</h2>
+
+      <div class="default-split">
+        <span class="label">Default split for new items:</span>
+        <span id="defaultSplitChips"></span>
+      </div>
 
       <div class="receipt-upload" id="receiptDrop">
         <label for="receiptFile">📷 Upload a receipt image</label>
@@ -331,12 +531,6 @@
         <div class="receipt-status" id="receiptStatus"></div>
       </div>
 
-      <div class="item-row">
-        <div class="header">Description</div>
-        <div class="header" style="text-align:right;">Price</div>
-        <div class="header">Shared by</div>
-        <div></div>
-      </div>
       <div id="itemsList"></div>
       <button class="btn-add" onclick="addItem()">+ Add Item</button>
 
@@ -385,10 +579,31 @@
       <div class="summary-row grand"><span>Total</span><span id="sumTotal">$0.00</span></div>
 
       <h2 style="margin-top: 20px;">Per Person</h2>
+
+      <details class="handles-editor">
+        <summary>Payment handles (Venmo / Zelle / PayPal)</summary>
+        <div class="handles-grid" id="handlesGrid"></div>
+      </details>
+
+      <div class="share-toolbar">
+        <button type="button" id="copyBtn">📋 Copy summary</button>
+        <button type="button" id="shareBtn" class="secondary">↗ Share</button>
+      </div>
+
       <div id="perPerson"></div>
     </div>
   </div>
 </div>
+
+<div class="sticky-bar">
+  <div>
+    <div class="label">Total</div>
+    <div class="total" id="stickyTotal">$0.00</div>
+  </div>
+  <button type="button" id="stickyShareBtn">Share</button>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 <script>
@@ -459,22 +674,44 @@
 
   const state = {
     people: [
-      { id: id(), name: 'Alice' },
-      { id: id(), name: 'Bob' },
+      { id: id(), name: 'Alice', handles: { venmo: '', zelle: '', paypal: '' } },
+      { id: id(), name: 'Bob', handles: { venmo: '', zelle: '', paypal: '' } },
     ],
     items: [],
     taxMode: 'amt',
     tipMode: 'pct',
+    defaultAssignees: 'all', // 'all' or array of person ids
   };
 
   state.items.push({ id: id(), desc: '', price: 0, assignees: state.people.map(p => p.id) });
+
+  // ---------- Saved groups (localStorage) ----------
+  const GROUPS_KEY = 'billsplit_groups_v1';
+  function loadGroups() {
+    try { return JSON.parse(localStorage.getItem(GROUPS_KEY) || '{}'); } catch { return {}; }
+  }
+  function saveGroups(groups) {
+    localStorage.setItem(GROUPS_KEY, JSON.stringify(groups));
+  }
+  function refreshGroupSelect() {
+    const sel = document.getElementById('groupSelect');
+    const groups = loadGroups();
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Saved groups…</option>';
+    Object.keys(groups).sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    sel.value = current;
+  }
 
   function fmt(n) {
     return (n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   function addPerson() {
-    const p = { id: id(), name: 'Person ' + (state.people.length + 1) };
+    const p = { id: id(), name: 'Person ' + (state.people.length + 1), handles: { venmo: '', zelle: '', paypal: '' } };
     state.people.push(p);
     state.items.forEach(it => {
       if (it.assignees.length === 0) it.assignees.push(p.id);
@@ -482,14 +719,34 @@
     render();
   }
 
+  function getDefaultAssignees() {
+    if (state.defaultAssignees === 'all' || !Array.isArray(state.defaultAssignees)) {
+      return state.people.map(p => p.id);
+    }
+    const valid = state.defaultAssignees.filter(pid => state.people.some(p => p.id === pid));
+    return valid.length ? valid : state.people.map(p => p.id);
+  }
+
+  function toggleDefaultAssignee(pid) {
+    let arr = state.defaultAssignees === 'all' ? state.people.map(p => p.id) : [...state.defaultAssignees];
+    if (arr.includes(pid)) arr = arr.filter(x => x !== pid);
+    else arr.push(pid);
+    state.defaultAssignees = arr.length === state.people.length ? 'all' : arr;
+    renderDefaultSplit();
+  }
+
   function removePerson(pid) {
     state.people = state.people.filter(p => p.id !== pid);
     state.items.forEach(it => { it.assignees = it.assignees.filter(a => a !== pid); });
+    if (Array.isArray(state.defaultAssignees)) {
+      state.defaultAssignees = state.defaultAssignees.filter(x => x !== pid);
+      if (state.defaultAssignees.length === state.people.length && state.people.length > 0) state.defaultAssignees = 'all';
+    }
     render();
   }
 
   function addItem() {
-    state.items.push({ id: id(), desc: '', price: 0, assignees: state.people.map(p => p.id) });
+    state.items.push({ id: id(), desc: '', price: 0, assignees: getDefaultAssignees() });
     render();
   }
 
@@ -509,6 +766,8 @@
     calculate();
   }
 
+  let lastBreakdown = { subtotal: 0, tax: 0, tip: 0, total: 0, perPerson: {} };
+
   function calculate() {
     const subtotal = state.items.reduce((s, it) => s + (parseFloat(it.price) || 0), 0);
 
@@ -522,6 +781,8 @@
     document.getElementById('sumTax').textContent = fmt(tax);
     document.getElementById('sumTip').textContent = fmt(tip);
     document.getElementById('sumTotal').textContent = fmt(total);
+    const stickyTotal = document.getElementById('stickyTotal');
+    if (stickyTotal) stickyTotal.textContent = fmt(total);
 
     const perPerson = {};
     state.people.forEach(p => { perPerson[p.id] = { subtotal: 0, tax: 0, tip: 0 }; });
@@ -542,12 +803,27 @@
       perPerson[p.id].total = perPerson[p.id].subtotal + perPerson[p.id].tax + perPerson[p.id].tip;
     });
 
+    lastBreakdown = { subtotal, tax, tip, total, perPerson };
+
     const container = document.getElementById('perPerson');
     container.innerHTML = '';
     state.people.forEach(p => {
       const r = perPerson[p.id];
       const div = document.createElement('div');
       div.className = 'person-result';
+      const handles = p.handles || {};
+      const actions = [];
+      if (handles.venmo) {
+        const u = handles.venmo.replace(/^@/, '');
+        actions.push(`<a target="_blank" rel="noopener" href="https://venmo.com/${encodeURIComponent(u)}?txn=charge&amount=${r.total.toFixed(2)}&note=${encodeURIComponent('Bill split')}">Venmo</a>`);
+      }
+      if (handles.paypal) {
+        const u = handles.paypal.replace(/^@/, '');
+        actions.push(`<a target="_blank" rel="noopener" href="https://paypal.me/${encodeURIComponent(u)}/${r.total.toFixed(2)}">PayPal</a>`);
+      }
+      if (handles.zelle) {
+        actions.push(`<button type="button" data-copy="${escapeHtml(handles.zelle)}">Zelle: ${escapeHtml(handles.zelle)}</button>`);
+      }
       div.innerHTML = `
         <div class="name"><span>${escapeHtml(p.name) || 'Unnamed'}</span><span class="amount">${fmt(r.total)}</span></div>
         <div class="breakdown">
@@ -555,13 +831,65 @@
           <span>Tax: ${fmt(r.tax)}</span>
           <span>Tip: ${fmt(r.tip)}</span>
         </div>
+        ${actions.length ? `<div class="actions">${actions.join('')}</div>` : ''}
       `;
+      div.querySelectorAll('button[data-copy]').forEach(b => {
+        b.addEventListener('click', () => {
+          navigator.clipboard.writeText(b.dataset.copy);
+          showToast('Zelle handle copied');
+        });
+      });
       container.appendChild(div);
     });
   }
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function renderDefaultSplit() {
+    const wrap = document.getElementById('defaultSplitChips');
+    if (!wrap) return;
+    const ids = state.defaultAssignees === 'all' ? state.people.map(p => p.id) : state.defaultAssignees;
+    wrap.innerHTML = state.people.map(p => {
+      const active = ids.includes(p.id) ? 'active' : '';
+      return `<button class="assignee-toggle ${active}" data-pid="${p.id}">${escapeHtml(p.name) || '?'}</button>`;
+    }).join('');
+    wrap.querySelectorAll('.assignee-toggle').forEach(btn => {
+      btn.addEventListener('click', () => toggleDefaultAssignee(parseInt(btn.dataset.pid)));
+    });
+  }
+
+  function renderHandlesEditor() {
+    const grid = document.getElementById('handlesGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    state.people.forEach(p => {
+      const wrap = document.createElement('div');
+      wrap.style.gridColumn = '1 / -1';
+      wrap.innerHTML = `
+        <div style="font-weight:600; margin: 6px 0 4px;">${escapeHtml(p.name) || 'Unnamed'}</div>
+        <div class="handles-grid">
+          <label>Venmo @user
+            <input type="text" data-field="venmo" placeholder="@username" value="${escapeHtml(p.handles?.venmo || '')}" />
+          </label>
+          <label>Zelle (email/phone)
+            <input type="text" data-field="zelle" placeholder="me@example.com" value="${escapeHtml(p.handles?.zelle || '')}" />
+          </label>
+          <label>PayPal.me handle
+            <input type="text" data-field="paypal" placeholder="username" value="${escapeHtml(p.handles?.paypal || '')}" />
+          </label>
+        </div>
+      `;
+      wrap.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', e => {
+          if (!p.handles) p.handles = {};
+          p.handles[e.target.dataset.field] = e.target.value.trim();
+          calculate();
+        });
+      });
+      grid.appendChild(wrap);
+    });
   }
 
   function render() {
@@ -572,7 +900,7 @@
       chip.className = 'person-chip';
       chip.innerHTML = `<input type="text" value="${escapeHtml(p.name)}" /><span class="x" title="Remove">&times;</span>`;
       const [input, x] = chip.children;
-      input.addEventListener('input', e => { p.name = e.target.value; calculate(); });
+      input.addEventListener('input', e => { p.name = e.target.value; calculate(); renderDefaultSplit(); });
       x.addEventListener('click', () => removePerson(p.id));
       peopleBar.appendChild(chip);
     });
@@ -582,33 +910,53 @@
     addBtn.onclick = addPerson;
     peopleBar.appendChild(addBtn);
 
+    renderDefaultSplit();
+    renderHandlesEditor();
+
     const itemsList = document.getElementById('itemsList');
     itemsList.innerHTML = '';
     state.items.forEach(it => {
-      const row = document.createElement('div');
-      row.className = 'item-row';
+      const card = document.createElement('div');
+      card.className = 'item-card';
       const assigneesHtml = state.people.map(p => {
         const active = it.assignees.includes(p.id) ? 'active' : '';
         return `<button class="assignee-toggle ${active}" data-pid="${p.id}">${escapeHtml(p.name) || '?'}</button>`;
       }).join('');
-      row.innerHTML = `
-        <input type="text" placeholder="Item" value="${escapeHtml(it.desc)}" />
-        <input type="number" placeholder="0.00" value="${it.price || ''}" step="0.01" min="0" />
+      card.innerHTML = `
+        <div class="item-top">
+          <input type="text" placeholder="Item description" value="${escapeHtml(it.desc)}" />
+          <input type="number" placeholder="0.00" value="${it.price || ''}" step="0.01" min="0" inputmode="decimal" />
+          <button class="btn-remove" title="Remove">&times;</button>
+        </div>
+        <div class="item-presets">
+          <button class="preset-btn" data-action="all">All</button>
+          <button class="preset-btn" data-action="none">None</button>
+          <button class="preset-btn" data-action="default">Default</button>
+        </div>
         <div class="assignees">${assigneesHtml || '<span style="color:var(--muted);font-size:12px;padding:4px;">No people</span>'}</div>
-        <button class="btn-remove" title="Remove">&times;</button>
       `;
-      const [descInput, priceInput, assignees, rmBtn] = row.children;
+      const top = card.querySelector('.item-top');
+      const [descInput, priceInput, rmBtn] = top.children;
       descInput.addEventListener('input', e => { it.desc = e.target.value; });
       priceInput.addEventListener('input', e => { it.price = parseFloat(e.target.value) || 0; calculate(); });
-      assignees.querySelectorAll('.assignee-toggle').forEach(btn => {
+      rmBtn.addEventListener('click', () => removeItem(it.id));
+      card.querySelectorAll('.assignee-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
           const pid = parseInt(btn.dataset.pid);
           toggleAssignee(it.id, pid);
           btn.classList.toggle('active');
         });
       });
-      rmBtn.addEventListener('click', () => removeItem(it.id));
-      itemsList.appendChild(row);
+      card.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const action = btn.dataset.action;
+          if (action === 'all') it.assignees = state.people.map(p => p.id);
+          else if (action === 'none') it.assignees = [];
+          else if (action === 'default') it.assignees = getDefaultAssignees();
+          render();
+        });
+      });
+      itemsList.appendChild(card);
     });
 
     calculate();
@@ -948,7 +1296,7 @@
         id: id(),
         desc: it.desc,
         price: it.price,
-        assignees: state.people.map(p => p.id),
+        assignees: getDefaultAssignees(),
       });
     });
 
@@ -982,6 +1330,105 @@
       });
     });
   });
+
+  // ---------- Toast ----------
+  const toastEl = document.getElementById('toast');
+  let toastTimer;
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+  }
+
+  // ---------- Groups: save / load / delete ----------
+  document.getElementById('saveGroupBtn').addEventListener('click', () => {
+    const name = prompt('Name this group:', '');
+    if (!name) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const groups = loadGroups();
+    groups[trimmed] = state.people.map(p => ({ name: p.name, handles: p.handles || {} }));
+    saveGroups(groups);
+    refreshGroupSelect();
+    document.getElementById('groupSelect').value = trimmed;
+    showToast('Group saved');
+  });
+
+  document.getElementById('groupSelect').addEventListener('change', e => {
+    const name = e.target.value;
+    if (!name) return;
+    const groups = loadGroups();
+    const list = groups[name];
+    if (!list) return;
+    state.people = list.map(p => ({ id: id(), name: p.name, handles: p.handles || {} }));
+    state.items.forEach(it => { it.assignees = state.people.map(p => p.id); });
+    state.defaultAssignees = 'all';
+    render();
+    showToast(`Loaded ${name}`);
+  });
+
+  document.getElementById('deleteGroupBtn').addEventListener('click', () => {
+    const sel = document.getElementById('groupSelect');
+    const name = sel.value;
+    if (!name) { showToast('Pick a group first'); return; }
+    if (!confirm(`Delete group "${name}"?`)) return;
+    const groups = loadGroups();
+    delete groups[name];
+    saveGroups(groups);
+    refreshGroupSelect();
+    showToast('Group deleted');
+  });
+
+  refreshGroupSelect();
+
+  // ---------- Share / copy summary ----------
+  function buildSummaryText() {
+    const lines = [];
+    lines.push('Bill Split');
+    lines.push(`Subtotal: ${fmt(lastBreakdown.subtotal)}`);
+    lines.push(`Tax: ${fmt(lastBreakdown.tax)}  Tip: ${fmt(lastBreakdown.tip)}`);
+    lines.push(`Total: ${fmt(lastBreakdown.total)}`);
+    lines.push('');
+    state.people.forEach(p => {
+      const r = lastBreakdown.perPerson[p.id];
+      if (!r) return;
+      lines.push(`${p.name || 'Unnamed'}: ${fmt(r.total)}  (items ${fmt(r.subtotal)} + tax ${fmt(r.tax)} + tip ${fmt(r.tip)})`);
+    });
+    return lines.join('\n');
+  }
+
+  async function copySummary() {
+    const txt = buildSummaryText();
+    try {
+      await navigator.clipboard.writeText(txt);
+      showToast('Summary copied');
+    } catch {
+      // Fallback: temporary textarea
+      const ta = document.createElement('textarea');
+      ta.value = txt;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Summary copied');
+    }
+  }
+
+  async function shareSummary() {
+    const txt = buildSummaryText();
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Bill Split', text: txt });
+      } catch (e) { /* user canceled */ }
+    } else {
+      copySummary();
+    }
+  }
+
+  document.getElementById('copyBtn').addEventListener('click', copySummary);
+  document.getElementById('shareBtn').addEventListener('click', shareSummary);
+  document.getElementById('stickyShareBtn').addEventListener('click', shareSummary);
 
   render();
 </script>
