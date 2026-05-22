@@ -260,6 +260,54 @@
     flex-wrap: wrap;
   }
   .tax-breakdown span b { color: var(--text); font-weight: 600; }
+
+  .receipt-upload {
+    background: var(--panel-2);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    text-align: center;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .receipt-upload.dragover { border-color: var(--accent); background: rgba(56, 189, 248, 0.08); }
+  .receipt-upload label {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .receipt-upload .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .receipt-upload input[type="file"] { display: none; }
+  .receipt-progress {
+    margin-top: 10px;
+    height: 6px;
+    background: var(--panel);
+    border-radius: 3px;
+    overflow: hidden;
+    display: none;
+  }
+  .receipt-progress.show { display: block; }
+  .receipt-progress-bar {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.2s;
+  }
+  .receipt-status {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    min-height: 16px;
+  }
+  .receipt-preview {
+    max-width: 100%;
+    max-height: 160px;
+    margin-top: 10px;
+    border-radius: 6px;
+    display: none;
+  }
+  .receipt-preview.show { display: inline-block; }
 </style>
 </head>
 <body>
@@ -273,6 +321,16 @@
       <div class="people-bar" id="peopleBar"></div>
 
       <h2 style="margin-top: 8px;">Items</h2>
+
+      <div class="receipt-upload" id="receiptDrop">
+        <label for="receiptFile">📷 Upload a receipt image</label>
+        <div class="hint">Drag & drop or click to scan items automatically (JPG/PNG, runs in your browser)</div>
+        <input type="file" id="receiptFile" accept="image/*" />
+        <img class="receipt-preview" id="receiptPreview" alt="receipt preview" />
+        <div class="receipt-progress" id="receiptProgress"><div class="receipt-progress-bar" id="receiptProgressBar"></div></div>
+        <div class="receipt-status" id="receiptStatus"></div>
+      </div>
+
       <div class="item-row">
         <div class="header">Description</div>
         <div class="header" style="text-align:right;">Price</div>
@@ -332,6 +390,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 <script>
   // Sales tax data — representative rates as of 2025; verify for your exact address.
   // Structure: state -> { rate, counties: { county -> { rate, cities: { city -> rate } } } }
@@ -639,6 +698,151 @@
   });
 
   citySel.addEventListener('change', applyLookup);
+
+  // ---------- Receipt OCR ----------
+  const dropZone = document.getElementById('receiptDrop');
+  const fileInput = document.getElementById('receiptFile');
+  const previewImg = document.getElementById('receiptPreview');
+  const progressWrap = document.getElementById('receiptProgress');
+  const progressBar = document.getElementById('receiptProgressBar');
+  const statusEl = document.getElementById('receiptStatus');
+
+  ['dragenter', 'dragover'].forEach(ev => {
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(ev => {
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+  });
+  dropZone.addEventListener('drop', e => {
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleReceipt(f);
+  });
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleReceipt(f);
+  });
+
+  async function handleReceipt(file) {
+    if (!file.type.startsWith('image/')) {
+      statusEl.textContent = 'Please choose an image file.';
+      return;
+    }
+    if (typeof Tesseract === 'undefined') {
+      statusEl.textContent = 'OCR library failed to load. Check your internet connection.';
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    previewImg.src = url;
+    previewImg.classList.add('show');
+    progressWrap.classList.add('show');
+    progressBar.style.width = '0%';
+    statusEl.textContent = 'Loading OCR engine…';
+
+    try {
+      const { data } = await Tesseract.recognize(url, 'eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            progressBar.style.width = Math.round(m.progress * 100) + '%';
+            statusEl.textContent = 'Reading receipt… ' + Math.round(m.progress * 100) + '%';
+          } else if (m.status) {
+            statusEl.textContent = m.status.charAt(0).toUpperCase() + m.status.slice(1) + '…';
+          }
+        }
+      });
+      progressBar.style.width = '100%';
+      const parsed = parseReceipt(data.text);
+      applyParsedReceipt(parsed);
+      statusEl.textContent = `Found ${parsed.items.length} items` +
+        (parsed.tax !== null ? `, tax ${fmt(parsed.tax)}` : '') +
+        (parsed.tip !== null ? `, tip ${fmt(parsed.tip)}` : '') +
+        '. Review and edit as needed.';
+    } catch (err) {
+      console.error(err);
+      statusEl.textContent = 'OCR failed: ' + (err.message || err);
+    } finally {
+      setTimeout(() => progressWrap.classList.remove('show'), 1200);
+    }
+  }
+
+  // Parse OCR text into items + tax + tip.
+  // Heuristics:
+  //  - Lines ending with a price are candidate line items.
+  //  - Lines containing "subtotal" are skipped (used to detect totals section).
+  //  - Lines containing "tax" capture into tax.
+  //  - Lines containing "tip"/"gratuity" capture into tip.
+  //  - Lines containing "total" stop item collection.
+  function parseReceipt(text) {
+    const result = { items: [], tax: null, tip: null, subtotal: null, total: null };
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const priceRegex = /\$?\s*(-?\d+(?:[.,]\d{2}))\s*$/;
+    const moneyOnly = /^\$?\s*-?\d+(?:[.,]\d{2})\s*$/;
+
+    let stopItems = false;
+    for (const line of lines) {
+      const lower = line.toLowerCase();
+      const m = line.match(priceRegex);
+      if (!m) continue;
+      const price = parseFloat(m[1].replace(',', '.'));
+      if (isNaN(price)) continue;
+
+      // Identify totals section labels
+      if (/\b(sub[\s-]?total)\b/.test(lower)) { result.subtotal = price; stopItems = true; continue; }
+      if (/\btax\b|\bgst\b|\bhst\b|\bvat\b/.test(lower)) { result.tax = price; stopItems = true; continue; }
+      if (/\btip\b|\bgratuity\b|\bservice\s*charge\b/.test(lower)) { result.tip = price; stopItems = true; continue; }
+      if (/\b(grand\s*total|total\s*due|amount\s*due|balance\s*due|total)\b/.test(lower)) { result.total = price; stopItems = true; continue; }
+      if (/\b(change|cash|visa|mastercard|amex|debit|credit|payment)\b/.test(lower)) { stopItems = true; continue; }
+
+      if (stopItems) continue;
+      if (moneyOnly.test(line)) continue; // bare numbers — skip
+
+      // Description = line minus the trailing price.
+      let desc = line.slice(0, line.length - m[0].length).trim();
+      // Strip leading qty markers like "1x ", "2 @ ", "(2)"
+      desc = desc.replace(/^\(?\d+\)?\s*[xX@]\s*/, '').replace(/^\d+\s+/, '');
+      desc = desc.replace(/[\s\-_.]+$/, '').trim();
+      if (!desc || desc.length < 2) continue;
+      if (price <= 0) continue;
+      if (price > 1000) continue; // sanity guard against "0123456789" misreads
+
+      result.items.push({ desc, price });
+    }
+    return result;
+  }
+
+  function applyParsedReceipt(parsed) {
+    if (parsed.items.length === 0 && parsed.tax === null && parsed.tip === null) return;
+
+    // Replace existing items if any are empty (placeholder), otherwise append.
+    const existingNonEmpty = state.items.filter(it => it.desc.trim() || it.price > 0);
+    if (existingNonEmpty.length === 0) state.items = [];
+
+    parsed.items.forEach(it => {
+      state.items.push({
+        id: id(),
+        desc: it.desc,
+        price: it.price,
+        assignees: state.people.map(p => p.id),
+      });
+    });
+
+    if (parsed.tax !== null) {
+      state.taxMode = 'amt';
+      document.querySelectorAll('.pct-toggle[data-mode="tax"] button').forEach(b => {
+        b.classList.toggle('active', b.dataset.val === 'amt');
+      });
+      document.getElementById('taxInput').value = parsed.tax.toFixed(2);
+    }
+    if (parsed.tip !== null) {
+      state.tipMode = 'amt';
+      document.querySelectorAll('.pct-toggle[data-mode="tip"] button').forEach(b => {
+        b.classList.toggle('active', b.dataset.val === 'amt');
+      });
+      document.getElementById('tipInput').value = parsed.tip.toFixed(2);
+    }
+
+    render();
+  }
   document.getElementById('tipInput').addEventListener('input', calculate);
 
   document.querySelectorAll('.pct-toggle').forEach(toggle => {
